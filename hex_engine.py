@@ -16,7 +16,7 @@ class hexPosition (object):
         
         self.size = max(2,min(size,26))
                
-        self.board = [[0 for x in range(max(2,min(size,26)))] for y in range(max(2,min(size,26)))]
+        self.board = [[0 for x in range(self.size)] for y in range(self.size)]
         self.winner = 0
                 
     def reset (self):
@@ -95,7 +95,9 @@ class hexPosition (object):
     def getStateVector (self, inverted=False):
         
         """
-        This convenience function returns the state of the board as a vector. This vector is the flattening of the board array. (Why does the Python standard library not inlude a flatten method?) If inverted=True then 'white' and 'black' are exchanged in the vector (this makes training RL algorithms more convenient).
+        This convenience function returns the state of the board as a vector. 
+        This vector is the flattening of the board array. (Why does the Python standard library not inlude a flatten method?) 
+        If inverted=True then 'white' and 'black' are exchanged in the vector (this makes training RL algorithms more convenient).
         """
         
         state_vector = list(reduce(lambda a,b: a+b, self.board))
@@ -279,8 +281,8 @@ class hexPosition (object):
                 print ("The human player (White) has won!")
                 self.whiteWin(verbose=True)
             else:
-                blacks_moove = machine(self.getStateVector(), self.getActionSpace())
-                self.board[blacks_moove[0]][blacks_moove[1]] = 2
+                blacks_move = machine(self.getStateVector(), self.getActionSpace())
+                self.board[blacks_move[0]][blacks_move[1]] = 2
                 
                 self.blackWin()
                 if self.winner == 2:
