@@ -1,7 +1,6 @@
 # create virtual python environment
 
 python -m venv venv
-"venv\Scripts\Activate.ps1" | Out-File -FilePath "activate_venv.ps1"
 ./activate_venv.ps1
 venv\Scripts\python.exe -m pip install --upgrade pip
 
