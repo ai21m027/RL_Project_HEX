@@ -10,6 +10,13 @@ venv\Scripts\python.exe -m pip install --upgrade pip
 
 pip3 install numpy
 pip3 install matplotlib
+pip3 install ipykernel
+pip3 install gym[classic_control]
+
+# install pytorch with cuda 11.6 support (https://pytorch.org/get-started/locally/)
+pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+# install pytorch with cpu support only
+# pip3 install torch torchvision torchaudio
 
 
 # create activation file for venv in powershell (venv\Scripts\Activate.ps1)
