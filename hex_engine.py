@@ -306,22 +306,22 @@ class hexPosition (object):
 
 
 #Initializing an object
-myboard = hexPosition(size=9)
+# myboard = hexPosition(size=9)
 
-#Display the board in standard output
-myboard.printBoard()
+# #Display the board in standard output
+# myboard.printBoard()
 
-#Random playthrough
-myboard.randomMatch(evaluate_when_full=False)
-myboard.printBoard()
-#check whether Black has won
-myboard.blackWin(verbose=True)
-#check whether White has won
-myboard.whiteWin(verbose=True)
-#print board with inverted colors
-myboard.getInvertedBoard()
-#get board as vector
-myboard.getStateVector(inverted=False)
+# #Random playthrough
+# myboard.randomMatch(evaluate_when_full=False)
+# myboard.printBoard()
+# #check whether Black has won
+# myboard.blackWin(verbose=True)
+# #check whether White has won
+# myboard.whiteWin(verbose=True)
+# #print board with inverted colors
+# myboard.getInvertedBoard()
+# #get board as vector
+# myboard.getStateVector(inverted=False)
 
 # #reset the board
 # myboard.reset()

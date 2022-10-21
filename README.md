@@ -19,3 +19,8 @@ To activate the venv open a powershell window in the repository and run "activat
 (recommended): Run Visual Studio Code from this directory by entering "code ."
 
 In your IDE select the venv as target framework. (or run scripts directly from the activated console)
+
+
+# Training
+
+Use the notebook hex_engine_training.ipynb to implement the deep Q learning algorithm there and to keep the original hex_engine.py file clean
