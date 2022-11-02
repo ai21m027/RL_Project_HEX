@@ -1,0 +1,3 @@
+[submodule "AlphaZero"]
+	path = AlphaZero
+	url = https://github.com/suragnair/alpha-zero-general.git
