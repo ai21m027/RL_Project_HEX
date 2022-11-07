@@ -1,5 +1,6 @@
 # RL_Project_HEX
-Creating a Reinforcement Learning approach to play the game HEX
+Creating a Reinforcement Learning approach to play the game HEX using AlphaZero
+https://github.com/aebrahimian/alpha-zero-hex/tree/master/hex
 
 
 # Python virtual environments
@@ -23,4 +24,4 @@ In your IDE select the venv as target framework. (or run scripts directly from t
 
 # Training
 
-Use the notebook hex_engine_training.ipynb to implement the deep Q learning algorithm there and to keep the original hex_engine.py file clean
+./venv/Scripts/python.exe d:/Development/mai/RL_Project_HEX/main.py
