@@ -7,10 +7,10 @@ venv\Scripts\python.exe -m pip install --upgrade pip
 # install packages
 
 
-pip3 install numpy
-pip3 install matplotlib
-pip3 install ipykernel
-pip3 install coloredlogs
+# pip3 install numpy
+# pip3 install matplotlib
+# pip3 install ipykernel
+# pip3 install coloredlogs
 pip3 install tqdm
 
 # install pytorch with cuda 11.6 support (https://pytorch.org/get-started/locally/)
