@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from hex.HexGame import display
+from HexGame import display
 
 EPS = 1e-8
 
@@ -155,3 +155,4 @@ class MCTS():
 
         self.Ns[s] += 1
         return -v
+

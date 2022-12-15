@@ -1,6 +1,6 @@
-from Coach import Coach
+from DistributedMCTS import DistributedMCTS as MCTS
 from hex.HexGame import HexGame as Game
-from hex.pytorch.NNet import NNetWrapper as nn
+from hex.pytorch.NNet import NNetWrapper as NNET
 from utils import *
 
 args = dotdict({
@@ -16,19 +16,12 @@ args = dotdict({
     'checkpoint': './pretrained_models/hex/pytorch/temp/',
     'load_model': False,
     'load_folder_file': ('./pretrained_models/hex/pytorch/dev/6x100','checkpoint_26.pth.tar'),
-    'numItersForTrainExamplesHistory': 20,
-
+    'numItersForTrainExamplesHistory': 20
 })
 
-if __name__=="__main__":
-    g = Game(7)
-    nnet = nn(g)
+game = Game(7)
+mcts = MCTS(game, NNET(game), args)
 
-    if args.load_model:
-        nnet.load_checkpoint(args.load_folder_file[0], args.load_folder_file[1])
+result = mcts.getActionProb(game.getInitBoard(), 1, temp=0)
 
-    c = Coach(g, nnet, args)
-    if args.load_model:
-        print("Load trainExamples from file")
-        c.loadTrainExamples()
-    c.learn()
+print(result)

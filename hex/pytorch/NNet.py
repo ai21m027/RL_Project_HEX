@@ -3,6 +3,7 @@ import time
 import numpy as np
 import sys
 sys.path.append('../../')
+sys.path.append('hex/pytorch/')
 from utils import *
 from pytorch_classification.utils import Bar, AverageMeter
 from NeuralNet import NeuralNet
@@ -10,7 +11,7 @@ from NeuralNet import NeuralNet
 import torch
 import torch.optim as optim
 
-from .HexNNet import HexNNet as hnnet
+from HexNNet import HexNNet as hnnet
 
 args = dotdict({
     'lr': 0.001,
