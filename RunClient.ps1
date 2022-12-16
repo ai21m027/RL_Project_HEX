@@ -1,7 +1,7 @@
 param(
-    [int]$workerNr
+    [int]$jobNr
 )
 
 ../venv/Scripts/Activate.ps1
 
-python.exe .\DistributedMCTSClient.py $workerNr > ./worker_$workerNr/log.txt
+python.exe .\CoachAssistant.py $jobNr > ./jobs/job_$jobNr/log.txt

@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import numpy as np
 
-class DistributedMCTS():
+class DistributedMCTS2():
 
     def __init__(self, game, nnet, args):
         self.game = game
