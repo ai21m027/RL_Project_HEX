@@ -56,7 +56,8 @@ class Coach():
                 #     iterationTrainExamples += self.executeEpisode()
 
                 # save the iteration examples to the history 
-                self.trainExamplesHistory.append(iterationTrainExamples)
+                for result in iterationTrainExamples:
+                    self.trainExamplesHistory.append(result)
 
             if len(self.trainExamplesHistory) > self.args.numItersForTrainExamplesHistory:
                 print(
