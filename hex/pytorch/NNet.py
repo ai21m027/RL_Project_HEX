@@ -55,7 +55,7 @@ class NNetWrapper(NeuralNet):
                     boards, pis, vs = list(zip(*[examples[i] for i in sample_ids]))
                 except ValueError as e:
                     print('error' + str(e))
-                    print(list(zip(*[examples[i] for i in sample_ids])))
+                    print(len(list(zip(*[examples[i] for i in sample_ids]))))
                 boards = torch.FloatTensor(np.array(boards).astype(np.float64))
                 target_pis = torch.FloatTensor(np.array(pis))
                 target_vs = torch.FloatTensor(np.array(vs).astype(np.float64))
