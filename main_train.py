@@ -15,7 +15,7 @@ args = dotdict({
 
     'checkpoint': './pretrained_models/hex/pytorch/temp/',
     'load_model': False,
-    'load_folder_file': ('./pretrained_models/hex/pytorch/dev/6x100','checkpoint_26.pth.tar'),
+    'load_folder_file': ('./pretrained_models/hex/pytorch','checkpoint_41.pth.tar'),
     'numItersForTrainExamplesHistory': 20,
 
 })

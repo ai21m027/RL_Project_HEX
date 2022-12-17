@@ -43,25 +43,22 @@ class Coach():
         only if it wins >= updateThreshold fraction of games.
         """
 
-        for i in range(1, self.args.numIters + 1):
+        start = 42
+        for i in range(start, self.args.numIters + 1):
             # bookkeeping
             print(f'Starting Iter #{i} ...')
             # examples of the iteration
-            if not self.skipFirstSelfPlay or i > 1:
+            if not self.skipFirstSelfPlay or i > start:
                 iterationTrainExamples = deque([], maxlen=self.args.maxlenOfQueue)
 
-                iterationTrainExamples += CoachAssistant.distributeAndExecute(self.nnet, self.args)
-                # for _ in tqdm(range(self.args.numEps), desc="Self Play"):
-                #     self.mcts = MCTS(self.game, self.nnet, self.args)  # reset search tree
-                #     iterationTrainExamples += self.executeEpisode()
-
+                for examples in CoachAssistant.distributeAndExecute(self.nnet, self.args):
+                    iterationTrainExamples.extend(examples)
+                    
                 # save the iteration examples to the history 
-                for result in iterationTrainExamples:
-                    self.trainExamplesHistory.append(result)
+                self.trainExamplesHistory.append(iterationTrainExamples)
 
-            if len(self.trainExamplesHistory) > self.args.numItersForTrainExamplesHistory:
-                print(
-                    f"Removing the oldest entry in trainExamples. len(trainExamplesHistory) = {len(self.trainExamplesHistory)}")
+            while len(self.trainExamplesHistory) > self.args.numItersForTrainExamplesHistory:
+                print(f"Removing the oldest entry in trainExamples. len(trainExamplesHistory) = {len(self.trainExamplesHistory)}")
                 self.trainExamplesHistory.pop(0)
             # backup history to a file
             # NB! the examples were collected using the model from the previous iteration, so (i-1)  
