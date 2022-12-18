@@ -5,6 +5,7 @@ from collections import deque
 from pickle import Pickler, Unpickler
 from random import shuffle
 from hex.HexGame import display
+from utils import *
 
 import numpy as np
 # from tqdm import tqdm
@@ -43,75 +44,91 @@ class Coach():
         only if it wins >= updateThreshold fraction of games.
         """
 
-        start = 42
-        for i in range(start, self.args.numIters + 1):
+        for iteration in range(self.args.startIteration, self.args.numIters + 1):
+            self.runIteration(iteration)
+
+    def runIteration(self, iteration):
             # bookkeeping
-            print(f'Starting Iter #{i} ...')
-            # examples of the iteration
-            if not self.skipFirstSelfPlay or i > start:
-                iterationTrainExamples = deque([], maxlen=self.args.maxlenOfQueue)
+            print(f'Starting Iter #{iteration} ...')
 
-                for examples in CoachAssistant.distributeAndExecute(self.nnet, self.args):
-                    iterationTrainExamples.extend(examples)
-                    
-                # save the iteration examples to the history 
-                self.trainExamplesHistory.append(iterationTrainExamples)
+            measure_time(self.createTrainingData)(iteration)
 
-            while len(self.trainExamplesHistory) > self.args.numItersForTrainExamplesHistory:
-                print(f"Removing the oldest entry in trainExamples. len(trainExamplesHistory) = {len(self.trainExamplesHistory)}")
-                self.trainExamplesHistory.pop(0)
-            # backup history to a file
-            # NB! the examples were collected using the model from the previous iteration, so (i-1)  
-            self.saveTrainExamples(i - 1)
+            measure_time(self.trainNetwork)()
 
-            # shuffle examples before training
-            trainExamples = []
-            for e in self.trainExamplesHistory:
-                trainExamples.extend(e)
-            shuffle(trainExamples)
-
-            # training new network, keeping a copy of the old one
-            self.nnet.save_checkpoint(folder=self.args.checkpoint, filename='temp.pth.tar')
-            self.pnet.load_checkpoint(folder=self.args.checkpoint, filename='temp.pth.tar')
-            pmcts = MCTS(self.game, self.pnet, self.args)
-
-            self.nnet.train(trainExamples)
-            nmcts = MCTS(self.game, self.nnet, self.args)
-
-            print('PITTING AGAINST PREVIOUS VERSION')
-            def getNetworkAction(net, board, player):
-                board = self.game.getCanonicalForm(board, player)
-                valids2 = self.game.getValidMoves(board, 1)
-                p, v = net.predict(board)
-                p = p * valids2
-                return np.random.choice(len(p), p=p / p.sum())
-            
-            def getMCTSAction(net, board, player):
-                return np.argmax(net.getActionProb(board, player, temp=0))
-            
-            def getRandomAction(net, board, player):
-                board = self.game.getCanonicalForm(board, player)
-                valids2 = self.game.getValidMoves(board, 1)
-                return np.random.choice(self.game.getActionSize(), p=valids2/valids2.sum())
-            
-            networkArena = Arena(lambda x, player: getNetworkAction(self.nnet, x, player),
-                          lambda x, player: getNetworkAction(self.pnet, x, player), self.game, display=display)
-            pwins, nwins, draws = networkArena.playGames(self.args.arenaCompare, verbose=False)            
-            if pwins+nwins > 0 and float(nwins)/(pwins+nwins) < self.args.updateThreshold:
-                print('Network - Bad results, Retesting with MCTS')
-                mctsArena = Arena(lambda x, player: getMCTSAction(pmcts, x, player),
-                            lambda x, player: getMCTSAction(nmcts, x, player), self.game, display=display)
-                pwins, nwins, draws = mctsArena.playGames(self.args.arenaCompare, verbose=False)
-
-            print('NEW/PREV WINS : %d / %d ; DRAWS : %d' % (nwins, pwins, draws))
-            # print('NEW/PREV WINS2 : %d / %d ; DRAWS : %d' % (nwins2, pwins2, draws2))
-            if pwins+nwins > 0 and float(nwins)/(pwins+nwins) < self.args.updateThreshold:
+            if measure_time(self.evaluateNetwork)():
                 print('REJECTING NEW MODEL')
                 self.nnet.load_checkpoint(folder=self.args.checkpoint, filename='temp.pth.tar')
             else:
                 print('ACCEPTING NEW MODEL')
-                self.nnet.save_checkpoint(folder=self.args.checkpoint, filename=self.getCheckpointFile(i))
+                self.nnet.save_checkpoint(folder=self.args.checkpoint, filename=self.getCheckpointFile(iteration))
                 self.nnet.save_checkpoint(folder=self.args.checkpoint, filename='best.pth.tar')
+
+
+    def createTrainingData(self, iteration):
+        if not self.skipFirstSelfPlay or iteration > self.args.startIteration:
+            iterationTrainExamples = deque([], maxlen=self.args.maxlenOfQueue)
+
+            for examples in CoachAssistant.distributeAndExecute(self.nnet, self.args):
+                iterationTrainExamples.extend(examples)
+                
+            # save the iteration examples to the history 
+            self.trainExamplesHistory.append(iterationTrainExamples)
+
+        while len(self.trainExamplesHistory) > self.args.numItersForTrainExamplesHistory:
+            print(f"Removing the oldest entry in trainExamples. len(trainExamplesHistory) = {len(self.trainExamplesHistory)}")
+            self.trainExamplesHistory.pop(0)
+        # backup history to a file
+        # NB! the examples were collected using the model from the previous iteration, so (i-1)  
+        self.saveTrainExamples(iteration - 1)
+
+    def trainNetwork(self):
+        # shuffle examples before training
+        trainExamples = []
+        for e in self.trainExamplesHistory:
+            trainExamples.extend(e)
+        shuffle(trainExamples)
+
+        # training new network, keeping a copy of the old one
+        self.nnet.save_checkpoint(folder=self.args.checkpoint, filename='temp.pth.tar')
+        self.pnet.load_checkpoint(folder=self.args.checkpoint, filename='temp.pth.tar')
+        
+        self.nnet.train(trainExamples)
+
+    def evaluateNetwork(self):
+
+        pmcts = MCTS(self.game, self.pnet, self.args)
+        nmcts = MCTS(self.game, self.nnet, self.args)
+
+        print('PITTING AGAINST PREVIOUS VERSION')
+        def getNetworkAction(net, board, player):
+            board = self.game.getCanonicalForm(board, player)
+            valids2 = self.game.getValidMoves(board, 1)
+            p, v = net.predict(board)
+            p = p * valids2
+            return np.random.choice(len(p), p=p / p.sum())
+        
+        def getMCTSAction(net, board, player):
+            return np.argmax(net.getActionProb(board, player, temp=0))
+        
+        def getRandomAction(net, board, player):
+            board = self.game.getCanonicalForm(board, player)
+            valids2 = self.game.getValidMoves(board, 1)
+            return np.random.choice(self.game.getActionSize(), p=valids2/valids2.sum())
+        
+        networkArena = Arena(lambda x, player: getNetworkAction(self.nnet, x, player),
+                        lambda x, player: getNetworkAction(self.pnet, x, player), self.game, display=display)
+        mctsArena = Arena(lambda x, player: getMCTSAction(pmcts, x, player),
+                    lambda x, player: getMCTSAction(nmcts, x, player), self.game, display=display)
+        
+        pwins, nwins, draws = networkArena.playGames(self.args.arenaCompare, verbose=False)            
+        if pwins+nwins > 0 and float(nwins)/(pwins+nwins) < self.args.updateThreshold:
+            print('Network - Bad results, Retesting with MCTS')
+            pwins, nwins, draws = mctsArena.playGames(self.args.arenaCompare, verbose=False)
+
+        print('NEW/PREV WINS : %d / %d ; DRAWS : %d' % (nwins, pwins, draws))
+        # print('NEW/PREV WINS2 : %d / %d ; DRAWS : %d' % (nwins2, pwins2, draws2))
+        return pwins+nwins > 0 and float(nwins)/(pwins+nwins) < self.args.updateThreshold
+
 
     def getCheckpointFile(self, iteration):
         return 'checkpoint_' + str(iteration) + '.pth.tar'

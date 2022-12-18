@@ -3,7 +3,6 @@ from hex.HexGame import HexGame as Game
 from MCTS import MCTS
 import numpy as np
 from collections import deque
-import sys
 import os
 import json
 import pickle
