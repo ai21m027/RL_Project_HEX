@@ -1,5 +1,7 @@
 import math
 import numpy as np
+import sys
+sys.path.append('hex/')
 from HexGame import display
 
 EPS = 1e-8
@@ -12,7 +14,8 @@ class MCTS():
     def __init__(self, game, nnet, args):
         self.game = game
         self.nnet = nnet
-        self.args = args
+        self.numMCTSSims = args.numMCTSSims
+        self.cpuct = args.cpuct
         self.Qsa = {}       # stores Q values for s,a (as defined in the paper)
         self.Nsa = {}       # stores #times edge s,a was visited
         self.Ns = {}        # stores #times board s was visited
@@ -34,7 +37,7 @@ class MCTS():
 
         canonicalBoard = self.game.getCanonicalForm(board, player)
 
-        for i in range(self.args.numMCTSSims):
+        for i in range(self.numMCTSSims):
             # print('================= start search player {} ================='.format(player))
             self.search(board, player)
 
@@ -120,9 +123,9 @@ class MCTS():
         for a in range(self.game.getActionSize()):
             if valids[a]:
                 if (s,a) in self.Qsa:
-                    u = self.Qsa[(s,a)] + self.args.cpuct*self.Ps[s][a]*math.sqrt(self.Ns[s])/(1+self.Nsa[(s,a)])
+                    u = self.Qsa[(s,a)] + self.cpuct*self.Ps[s][a]*math.sqrt(self.Ns[s])/(1+self.Nsa[(s,a)])
                 else:
-                    u = self.args.cpuct*self.Ps[s][a]*math.sqrt(self.Ns[s] + EPS)     # Q = 0 ?
+                    u = self.cpuct*self.Ps[s][a]*math.sqrt(self.Ns[s] + EPS)     # Q = 0 ?
 
                 if u > cur_best:
                     cur_best = u

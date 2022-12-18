@@ -12,7 +12,7 @@ def createSSHClient(server, port, user, password):
 
 ssh = createSSHClient('ctld-n1.cs.technikum-wien.at', 22, input('Enter user name:\n'), getpass.getpass(prompt='Password: '))
 
-def scp_tests():
+def uploadGameFiles():
     scp = SCPClient(ssh.get_transport())
     scp.put('main_train.py', remote_path='/home/ai21m026/hex')
     scp.put('Game.py', remote_path='/home/ai21m026/hex')
@@ -28,11 +28,17 @@ def scp_tests():
     scp.put('hex', recursive=True, remote_path='/home/ai21m026/hex')
     scp.put('pytorch_classification', recursive=True, remote_path='/home/ai21m026/hex')
 
+def downloadNnet(remote_path, local_path):
+    scp = SCPClient(ssh.get_transport())
+    scp.get(remote_path, local_path)
+
 def ssh_tests():
     stdin, stdout, stderr = ssh.exec_command('sinfo')
     result = str(stdout.read())
     print(result.replace('\\n', '\n'))
 
 
-scp_tests()
+# uploadGameFiles()
+
+downloadNnet('/home/ai21m026/hex/pretrained_models/hex/pytorch/temp/checkpoint_261.pth.tar', 'pretrained_models/hex/pytorch/checkpoint_261.pth.tar')
 # ssh_tests()
