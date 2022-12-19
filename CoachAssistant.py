@@ -9,6 +9,7 @@ import pickle
 import shutil
 import subprocess
 import time
+import traceback
 
 
 class CoachAssistant():
@@ -20,24 +21,24 @@ class CoachAssistant():
 
         CoachAssistant.cleanEnvironments(args)
 
-        subprocess.Popen(['sbatch', '-a', f'1-{args.numEps}', 'run_job.sh']).wait()
+        subprocess.Popen(['sbatch', '-a', f'1-{args.num_workers}', 'run_job.sh']).wait()
 
         
         time.sleep(3)
 
         while subprocess.check_output(['squeue', '-n', 'hex-training-job']).decode('utf-8').find('hex-trai') != -1:
-            time.sleep(0.5)
+            time.sleep(0.1)
 
         results = deque([])
 
-        for job in range(1, args.numEps + 1):
+        for job in range(1, args.num_workers + 1):
             def error_exists():
                 return os.path.exists('jobs/job_{0}/error.json'.format(job))
             def result_exists():
                 return os.path.exists('jobs/job_{0}/result.bin'.format(job))
             
             while not error_exists() and not result_exists():
-                time.sleep(0.5)            
+                pass
 
             if error_exists():
                 with open('jobs/job_{0}/error.json'.format(job)) as f:
@@ -66,14 +67,14 @@ class CoachAssistant():
                 pass
 
         os.makedirs('jobs')
-        for jobNr in range(1, args.numEps + 1):
+        for jobNr in range(1, args.num_workers + 1):
             os.makedirs('jobs/job_{}'.format(jobNr))
             
         with open('jobs/args.json', 'w') as f:
             json.dump(args, f, indent=4)
 
     @staticmethod
-    def executeEpisode():
+    def executeEpisode(worker):
         """
         This function executes one episode of self-play, starting with player 1.
         As the game is played, each turn is added as a training example to
@@ -97,62 +98,68 @@ class CoachAssistant():
         game = Game(7)
         nnet = NNET(game)
         nnet.load_checkpoint('jobs', 'nnet.pth.tar')
-        mcts = MCTS(game, nnet, args)
 
-        trainExamples = []
-        board = game.getInitBoard()
-        curPlayer = 1
-        episodeStep = 0
 
         print('starting MCTS search')
 
-        while True:
-            episodeStep += 1
-            canonicalBoard = game.getCanonicalForm(board, curPlayer)
-            temp = int(episodeStep < args.tempThreshold)
+        workerTrainExamples = deque([], maxlen=args.maxlenOfQueue)
+        for episode in range(args.numEps_per_worker):
+            
+            print(f'starting episode {episode}')
 
-            pi = mcts.getActionProb(canonicalBoard, curPlayer, temp=temp)
-            sym = game.getSymmetries(canonicalBoard, pi)
-            for b, p in sym:
-                trainExamples.append([b, curPlayer, p, None])
+            curPlayer = 1
+            board = game.getInitBoard()
+            mcts = MCTS(game, nnet, args)
+            trainExamples = []
+            episodeStep = 0
 
-            action = np.random.choice(len(pi), p=pi)
+            while True:
+                episodeStep += 1
+                canonicalBoard = game.getCanonicalForm(board, curPlayer)
+                temp = int(episodeStep < args.tempThreshold)
 
-            valids = game.getValidMoves(board, curPlayer)
+                pi = mcts.getActionProb(canonicalBoard, curPlayer, temp=temp)
+                sym = game.getSymmetries(canonicalBoard, pi)
+                for b, p in sym:
+                    trainExamples.append([b, curPlayer, p, None])
 
-            if valids[action] == 0:
-                print('invalid action in coach', action)
-                assert valids[action] > 0
+                action = np.random.choice(len(pi), p=pi)
 
-            board, _ = game.getNextState(canonicalBoard, 1, action)
-            board = game.getOriginalForm(board, curPlayer)
-            curPlayer = -curPlayer
+                valids = game.getValidMoves(board, curPlayer)
 
-            r = game.getGameEnded(board, curPlayer)
+                if valids[action] == 0:
+                    print('invalid action in coach', action)
+                    assert valids[action] > 0
 
-            if r != 0:
-                result = [(x[0], x[2], r * ((-1) ** (x[1] != curPlayer)))
-                          for x in trainExamples]
+                board, _ = game.getNextState(canonicalBoard, 1, action)
+                board = game.getOriginalForm(board, curPlayer)
+                curPlayer = -curPlayer
 
-                with open('jobs/job_{}/result.bin'.format(jobNr), 'wb') as f:
-                    pickle.dump(result, f)
+                r = game.getGameEnded(board, curPlayer)
 
-                break
+                if r != 0:
+                    examples = [(x[0], x[2], r * ((-1) ** (x[1] != curPlayer))) for x in trainExamples]
+                    workerTrainExamples.extend(examples)
+                    break
+        
+        print('generated {} examples'.format(len(workerTrainExamples)))
+
+        with open('jobs/job_{}/result.bin'.format(worker), 'wb') as f:
+            pickle.dump(workerTrainExamples, f)
+
+        print('finished MCTS search')
 
 
 if __name__ == "__main__":
 
-    jobNr = int(os.environ['SLURM_ARRAY_TASK_ID'])
+    worker = int(os.environ['SLURM_ARRAY_TASK_ID'])
 
-    print('worker {} started'.format(jobNr))
+    print('worker {} started'.format(worker))
 
     try:
-        print('job {} started'.format(jobNr))
-        CoachAssistant.executeEpisode()
-        print('job {} finished'.format(jobNr))
+        CoachAssistant.executeEpisode(worker)
+        print('worker {} finished'.format(worker))
 
     except Exception as e:
-        with open('jobs/job_{}/error.json'.format(jobNr), 'w') as f:
-            f.write(str(e))
-    finally:
-        print('job {} done'.format(jobNr))
+        with open('jobs/job_{}/error.json'.format(worker), 'w') as f:
+            f.write(str(e) + traceback.format_exc())

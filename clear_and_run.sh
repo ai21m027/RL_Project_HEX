@@ -1,6 +1,7 @@
 #!/bin/sh
 
-rm slurm/*
+rm logs/*
+rm slurm/hex-training-job*
 
 sbatch ./run_training.sh
 

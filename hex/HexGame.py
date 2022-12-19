@@ -95,8 +95,8 @@ class HexGame(Game):
 
     def stringRepresentation(self, board):
         # 8x8 numpy array (canonical board)
-        # return board.tostring()
-        return reduce(lambda a,b:str(a)+str(b), board.reshape(-1))
+        return board.tostring()
+        #return reduce(lambda a,b:str(a)+str(b), board.reshape(-1))
 
 
     def getScore(self, board):

@@ -38,7 +38,7 @@ def ssh_tests():
     print(result.replace('\\n', '\n'))
 
 
-# uploadGameFiles()
+uploadGameFiles()
 
-downloadNnet('/home/ai21m026/hex/pretrained_models/hex/pytorch/temp/checkpoint_261.pth.tar', 'pretrained_models/hex/pytorch/checkpoint_261.pth.tar')
+# downloadNnet('/home/ai21m026/hex/pretrained_models/hex/pytorch/temp/checkpoint_261.pth.tar', 'pretrained_models/hex/pytorch/checkpoint_261.pth.tar')
 # ssh_tests()

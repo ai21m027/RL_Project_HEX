@@ -16,13 +16,7 @@ class MCTS():
         self.nnet = nnet
         self.numMCTSSims = args.numMCTSSims
         self.cpuct = args.cpuct
-        self.Qsa = {}       # stores Q values for s,a (as defined in the paper)
-        self.Nsa = {}       # stores #times edge s,a was visited
-        self.Ns = {}        # stores #times board s was visited
-        self.Ps = {}        # stores initial policy (returned by neural net)
-
-        self.Es = {}        # stores game.getGameEnded ended for board s
-        self.Vs = {}        # stores game.getValidMoves for board s
+        self.states = {}
         self.sim_count = 0
 
     def getActionProb(self, board, player, temp=1):
@@ -37,23 +31,22 @@ class MCTS():
 
         canonicalBoard = self.game.getCanonicalForm(board, player)
 
-        for i in range(self.numMCTSSims):
-            # print('================= start search player {} ================='.format(player))
+        for _ in range(self.numMCTSSims):
             self.search(board, player)
 
         s = self.game.stringRepresentation(canonicalBoard)
-        counts = [self.Nsa[(s,a)] if (s,a) in self.Nsa else 0 for a in range(self.game.getActionSize())]
-        # print(self.Nsa)
-        # print(counts)
+        state = self.states[s]
 
-        if temp==0:
+        counts = [state.Na[a] if a in state.Na else 0 for a in range(self.game.getActionSize())]
+
+        if temp == 0:
             bestA = np.argmax(counts)
-            probs = [0]*len(counts)
-            probs[bestA]=1
+            probs = [0] * len(counts)
+            probs[bestA] = 1
             return probs
 
-        counts = [x**(1./temp) for x in counts]
-        probs = [x/float(sum(counts)) for x in counts]
+        counts = [x**(1. / temp) for x in counts]
+        probs = [x / float(sum(counts)) for x in counts]
         return probs
 
 
@@ -81,51 +74,50 @@ class MCTS():
 
         canonicalBoard = self.game.getCanonicalForm(board, player)
 
-        # print('MCTS board player', player)
-        # display(board)
-        # print('MCTS conn board')
-        # display(canonicalBoard) 
-
         s = self.game.stringRepresentation(canonicalBoard)
+        state = None
 
-        if s not in self.Es:
-            self.Es[s] = self.game.getGameEnded(canonicalBoard, 1)
-        if self.Es[s]!=0:
+        if s not in self.states:
+            state = State()
+            state.ended = self.game.getGameEnded(canonicalBoard, 1)
+            state.valids = self.game.getValidMoves(canonicalBoard, 1)
+            self.states[s] = state
+        else:
+            state = self.states[s]
+        
+        if state.ended != 0:
             # terminal node
-            return -self.Es[s]
+            return -state.ended
 
-        if s not in self.Ps:
+        if state.preds is None:
             # leaf node
-            self.Ps[s], v = self.nnet.predict(canonicalBoard)
-            valids = self.game.getValidMoves(canonicalBoard, 1)
-            self.Ps[s] = self.Ps[s]*valids      # masking invalid moves
-            sum_Ps_s = np.sum(self.Ps[s])
+            state.preds, v = self.nnet.predict(canonicalBoard)
+            state.preds = state.preds * state.valids      # masking invalid moves
+            sum_Ps_s = np.sum(state.preds)
+
             if sum_Ps_s > 0:
-                self.Ps[s] /= sum_Ps_s    # renormalize
+                state.preds /= sum_Ps_s    # renormalize
             else:
                 # if all valid moves were masked make all valid moves equally probable
                 
                 # NB! All valid moves may be masked if either your NNet architecture is insufficient or you've get overfitting or something else.
                 # If you have got dozens or hundreds of these messages you should pay attention to your NNet and/or training process.   
                 print("All valid moves were masked, do workaround.")
-                self.Ps[s] = self.Ps[s] + valids
-                self.Ps[s] /= np.sum(self.Ps[s])
+                state.preds = state.preds + state.valids
+                state.preds /= np.sum(state.preds)
 
-            self.Vs[s] = valids
-            self.Ns[s] = 0
             return -v
 
-        valids = self.Vs[s]
         cur_best = -float('inf')
         best_act = -1
 
         # pick the action with the highest upper confidence bound
         for a in range(self.game.getActionSize()):
-            if valids[a]:
-                if (s,a) in self.Qsa:
-                    u = self.Qsa[(s,a)] + self.cpuct*self.Ps[s][a]*math.sqrt(self.Ns[s])/(1+self.Nsa[(s,a)])
+            if state.valids[a]:
+                if a in state.Qa:
+                    u = state.Qa[a] + self.cpuct * state.preds[a] * math.sqrt(state.N) / (1 + state.Na[a])
                 else:
-                    u = self.cpuct*self.Ps[s][a]*math.sqrt(self.Ns[s] + EPS)     # Q = 0 ?
+                    u = self.cpuct * state.preds[a] * math.sqrt(state.N + EPS)     # Q = 0 ?
 
                 if u > cur_best:
                     cur_best = u
@@ -133,29 +125,32 @@ class MCTS():
 
         a = best_act
 
-        if valids[a]==0:
+        if state.valids[a] == 0:
             print('invalid action in MCTS', a)
-            assert valids[a] >0         
+            assert state.valids[a] > 0         
 
-        next_s, _ = self.game.getNextState(canonicalBoard, 1, a)
-        # print('conn after apply')
-        # display(next_s)       
-        # print('====================')       
+        next_s, _ = self.game.getNextState(canonicalBoard, 1, a)        
         next_s = self.game.getOriginalForm(next_s, player)
-        next_player = -player        
-
-        # next_s = self.game.getCanonicalForm(next_s, next_player)
+        next_player = -player
 
         v = self.search(next_s, next_player)
 
-        if (s,a) in self.Qsa:
-            self.Qsa[(s,a)] = (self.Nsa[(s,a)]*self.Qsa[(s,a)] + v)/(self.Nsa[(s,a)]+1)
-            self.Nsa[(s,a)] += 1
+        if a in state.Qa:
+            state.Qa[a] = (state.Na[a] * state.Qa[a] + v) / (state.Na[a] + 1)
+            state.Na[a] += 1
 
         else:
-            self.Qsa[(s,a)] = v
-            self.Nsa[(s,a)] = 1
+            state.Qa[a] = v
+            state.Na[a] = 1
 
-        self.Ns[s] += 1
+        state.N += 1
         return -v
 
+class State():
+    def __init__(self):
+        self.ended = 0
+        self.preds = None
+        self.valids = None
+        self.N = 0
+        self.Qa = {}
+        self.Na = {}
