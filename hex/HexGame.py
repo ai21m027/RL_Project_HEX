@@ -1,8 +1,10 @@
 from __future__ import print_function
+from functools import reduce
 import sys
 sys.path.append('..')
+sys.path.append('hex')
 from Game import Game
-from .HexLogic import Board
+from HexLogic import Board
 import numpy as np
 from heapq import *
 
@@ -94,6 +96,7 @@ class HexGame(Game):
     def stringRepresentation(self, board):
         # 8x8 numpy array (canonical board)
         return board.tostring()
+        #return reduce(lambda a,b:str(a)+str(b), board.reshape(-1))
 
 
     def getScore(self, board):
